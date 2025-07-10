@@ -1,0 +1,471 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Script" referent="RBXE7162150135C47FC81430875A330C657">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+			<bool name="DefinesCapabilities">false</bool>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">PluginMat</string>
+			<token name="RunContext">0</token>
+			<string name="ScriptGuid">{06F523AF-6955-458E-8D2A-C537C8D5DECE}</string>
+			<ProtectedString name="Source"><![CDATA[local plugin = script.Parent
+local toolbar = plugin:CreateToolbar("TrooperKing3005")
+local toggleButton = toolbar:CreateButton("PluginMat", "Open PluginMat reference panel", "rbxassetid://95513873730306")
+
+-- UI elements
+local widget = plugin:CreateDockWidgetPluginGui(
+    "PluginMatWidget",
+    DockWidgetPluginGuiInfo.new(
+        Enum.InitialDockState.Float, -- Initial dock state
+        true, -- Initially enabled
+        false, -- Override enabled
+        800, -- Default width
+        500, -- Default height
+        700, -- Minimum width
+        400 -- Minimum height
+    )
+)
+widget.Title = "PluginMat - Lua Reference"
+widget.Name = "PluginMatWidget"
+
+-- Main background
+local background = Instance.new("Frame")
+background.Size = UDim2.new(1, 0, 1, 0)
+background.BackgroundColor3 = Color3.fromRGB(45, 50, 80) -- Dark blue background like the desk mat
+background.BorderSizePixel = 0
+background.Parent = widget
+
+-- Add search bar at the top
+local searchBar = Instance.new("Frame")
+searchBar.Size = UDim2.new(1, 0, 0, 40)
+searchBar.Position = UDim2.new(0, 0, 0, 0)
+searchBar.BackgroundColor3 = Color3.fromRGB(35, 40, 70)
+searchBar.BorderSizePixel = 0
+searchBar.Parent = background
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(0.7, 0, 0, 30)
+searchBox.Position = UDim2.new(0.15, 0, 0, 5)
+searchBox.BackgroundColor3 = Color3.fromRGB(60, 65, 120)
+searchBox.BorderColor3 = Color3.fromRGB(80, 85, 160)
+searchBox.BorderSizePixel = 2
+searchBox.PlaceholderText = "Search for Lua references..."
+searchBox.Text = ""
+searchBox.Font = Enum.Font.SourceSans
+searchBox.TextSize = 16
+searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBox.ClearTextOnFocus = false
+searchBox.Parent = searchBar
+
+-- Adjust main content to account for search bar
+local contentContainer = Instance.new("Frame")
+contentContainer.Size = UDim2.new(1, 0, 1, -40)
+contentContainer.Position = UDim2.new(0, 0, 0, 40)
+contentContainer.BackgroundTransparency = 1
+contentContainer.Parent = background
+
+local function updateCanvasSize(scrollingFrame)
+    local contentHeight = 0
+    local itemCount = 0
+
+    for _, child in pairs(scrollingFrame:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
+            contentHeight = contentHeight + child.Size.Y.Offset
+            itemCount = itemCount + 1
+        end
+    end
+
+    -- Add padding for UIListLayout if present
+    local listLayout = scrollingFrame:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        -- Account for padding between items (itemCount - 1 spaces between itemCount items)
+        if itemCount > 1 then
+            contentHeight = contentHeight + (listLayout.Padding.Offset * (itemCount - 1))
+        end
+    end
+
+    -- Set canvas size with a small buffer
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight + 10)
+end
+
+-- Create the grid layout
+local function createSection(title, posX, posY, sizeX, sizeY)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(sizeX, 0, sizeY, 0)
+    section.Position = UDim2.new(posX, 0, posY, 0)
+    section.BackgroundColor3 = Color3.fromRGB(60, 65, 120)
+    section.BorderColor3 = Color3.fromRGB(80, 85, 160)
+    section.BorderSizePixel = 2
+    section.Parent = contentContainer
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 24)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(70, 75, 140)
+    titleLabel.BorderSizePixel = 0
+    titleLabel.Text = title
+    titleLabel.Font = Enum.Font.SourceSansBold
+    titleLabel.TextSize = 16
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Parent = section
+
+    local contentFrame = Instance.new("ScrollingFrame")
+    contentFrame.Size = UDim2.new(1, 0, 1, -24)
+    contentFrame.Position = UDim2.new(0, 0, 0, 24)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.BorderSizePixel = 0
+    contentFrame.ScrollBarThickness = 4
+    contentFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+    contentFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    contentFrame.CanvasSize = UDim2.new(0, 0, 2, 0)
+    contentFrame.Parent = section
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.Parent = contentFrame
+
+    return contentFrame
+end
+
+-- Function to add a reference item
+local function addReferenceItem(parent, syntax, description)
+    local item = Instance.new("Frame")
+    item.Size = UDim2.new(1, 0, 0, 24)
+    item.BackgroundColor3 = Color3.fromRGB(50, 55, 100)
+    item.BorderSizePixel = 0
+    item.Parent = parent
+    item.Name = "RefItem_" .. syntax:gsub("[^%w]", "_") -- Create a name based on syntax for searching
+
+    -- Store search terms in attributes for easy searching
+    item:SetAttribute("Syntax", syntax:lower())
+    item:SetAttribute("Description", description:lower())
+
+    local syntaxLabel = Instance.new("TextLabel")
+    syntaxLabel.Size = UDim2.new(0.4, -5, 1, 0)
+    syntaxLabel.Position = UDim2.new(0, 5, 0, 0)
+    syntaxLabel.BackgroundTransparency = 1
+    syntaxLabel.Text = syntax
+    syntaxLabel.Font = Enum.Font.Code
+    syntaxLabel.TextSize = 14
+    syntaxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    syntaxLabel.TextXAlignment = Enum.TextXAlignment.Left
+    syntaxLabel.Parent = item
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(0.6, -5, 1, 0)
+    descLabel.Position = UDim2.new(0.4, 0, 0, 0)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = description
+    descLabel.Font = Enum.Font.SourceSans
+    descLabel.TextSize = 14
+    descLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = item
+
+    return item
+end
+
+-- Create sections based on the desk mat layout
+local syntaxSection = createSection("LUA Syntax And Basics", 0, 0, 0.25, 0.3)
+local controlSection = createSection("Control Structures", 0, 0.31, 0.25, 0.3)
+local tablesSection = createSection("Tables, Arrays & Dictionaries", 0.26, 0, 0.24, 0.3)
+local stringsSection = createSection("String Operations", 0.26, 0.31, 0.24, 0.3)
+local miscSection = createSection("Miscellaneous", 0.51, 0, 0.24, 0.2)
+local mathSection = createSection("Math Library", 0.51, 0.21, 0.24, 0.4)
+local operatorsSection = createSection("Operators", 0.51, 0.62, 0.24, 0.38)
+local booleanSection = createSection("Boolean and Bitwise Operations", 0.76, 0, 0.24, 0.3)
+local metaSection = createSection("Metatables and Metamethods", 0.76, 0.31, 0.24, 0.3)
+local robloxSection = createSection("Roblox Specific", 0.76, 0.62, 0.24, 0.38)
+local taskSection = createSection("Task Library", 0.26, 0.62, 0.24, 0.38)
+
+-- Create a table to store all reference items for searching
+local allReferenceItems = {}
+
+-- Function to add reference item and track it for search
+local function addAndTrackReferenceItem(section, syntax, description)
+    local item = addReferenceItem(section, syntax, description)
+    table.insert(allReferenceItems, item)
+    updateCanvasSize(section)
+    return item
+end
+
+-- Add content to sections
+
+-- LUA Syntax And Basics
+addAndTrackReferenceItem(syntaxSection, "--", "Single-line comment")
+addAndTrackReferenceItem(syntaxSection, "--[[  ]]", "Multi-line comment")
+addAndTrackReferenceItem(syntaxSection, "local var = value", "Variable declaration")
+addAndTrackReferenceItem(syntaxSection, "function name(args)", "Function declaration")
+addAndTrackReferenceItem(syntaxSection, "return value", "Return a value from a function")
+addAndTrackReferenceItem(syntaxSection, "do ... end", "Block of code")
+addAndTrackReferenceItem(syntaxSection, ";", "Statement separator")
+addAndTrackReferenceItem(syntaxSection, "--", "Global comment marker")
+addAndTrackReferenceItem(syntaxSection, "nil", "Represents void")
+
+-- Control Structures
+addAndTrackReferenceItem(controlSection, "if condition then", "Start an if condition")
+addAndTrackReferenceItem(controlSection, "elseif condition then", "Else if condition")
+addAndTrackReferenceItem(controlSection, "else", "Else statement")
+addAndTrackReferenceItem(controlSection, "for i=start,stop,step", "For loop")
+addAndTrackReferenceItem(controlSection, "while condition do", "While loop")
+addAndTrackReferenceItem(controlSection, "repeat ... until", "Repeat loop until condition at the end")
+addAndTrackReferenceItem(controlSection, "break", "Exit a loop early")
+addAndTrackReferenceItem(controlSection, "continue", "Skip to next iteration of loop")
+addAndTrackReferenceItem(controlSection, "goto label", "Jump to labeled position")
+addAndTrackReferenceItem(controlSection, "::label::", "Define a label for goto")
+addAndTrackReferenceItem(controlSection, "for k, v in pairs(t) do", "Table iterator loop")
+
+-- Tables, Arrays & Dictionaries
+addAndTrackReferenceItem(tablesSection, "local array = {1, 2, 3, 4}", "Create an array (integer-indexed table)")
+addAndTrackReferenceItem(tablesSection, "local dict = {a=1, b=2}", "Create a dictionary (key-value table)")
+addAndTrackReferenceItem(tablesSection, "array[1]", "Access first element of array (Lua arrays start at 1)")
+addAndTrackReferenceItem(tablesSection, "dict.key or dict['key']", "Access dictionary value by key")
+addAndTrackReferenceItem(tablesSection, "for i, v in ipairs(array) do", "Loop through array with index and value")
+addAndTrackReferenceItem(tablesSection, "for k, v in pairs(dict) do", "Loop through dictionary keys and values")
+addAndTrackReferenceItem(tablesSection, "table.sort(array)", "Sort an array")
+addAndTrackReferenceItem(tablesSection, "table.concat(array, ',')", "Join array elements into string")
+addAndTrackReferenceItem(tablesSection, "table.clear(dict)", "Remove all key-value pairs")
+addAndTrackReferenceItem(tablesSection, "table.find(array, value)", "Find value in array, return index")
+
+-- String Operations
+addAndTrackReferenceItem(stringsSection, "str1 .. str2", "Concatenate strings")
+addAndTrackReferenceItem(stringsSection, "string.find(str, pat)", "Find a substring")
+addAndTrackReferenceItem(stringsSection, "string.gsub(str, pat, repl)", "Replace a pattern in a string")
+addAndTrackReferenceItem(stringsSection, "string.sub(str, i, j)", "Get substring")
+addAndTrackReferenceItem(stringsSection, "string.len(str)", "Get the length of a string")
+addAndTrackReferenceItem(stringsSection, "string.upper(str)", "Convert string to uppercase")
+addAndTrackReferenceItem(stringsSection, "string.lower(str)", "Convert string to lowercase")
+addAndTrackReferenceItem(stringsSection, "string.match(str, pattern)", "Match string against pattern")
+addAndTrackReferenceItem(stringsSection, "string.gmatch(str, pattern)", "Iterator for pattern matches")
+addAndTrackReferenceItem(stringsSection, "string.format(fmt, ...)", "Format string like printf")
+addAndTrackReferenceItem(stringsSection, "string.byte(str, i)", "Get ASCII value of character")
+addAndTrackReferenceItem(stringsSection, "string.char(...)", "Convert ASCII values to characters")
+addAndTrackReferenceItem(stringsSection, "string.rep(str, n)", "Repeat string n times")
+addAndTrackReferenceItem(stringsSection, "string.reverse(str)", "Reverse a string")
+addAndTrackReferenceItem(stringsSection, "tostring(value)", "Convert value to string")
+
+-- Task Library & Functions
+addAndTrackReferenceItem(taskSection, "task.wait(seconds)", "Yield for specified seconds (preferred over wait())")
+addAndTrackReferenceItem(taskSection, "task.spawn(func, ...)", "Run function in separate thread (preferred over spawn())")
+addAndTrackReferenceItem(taskSection, "task.defer(func, ...)", "Defer function execution")
+addAndTrackReferenceItem(taskSection, "task.delay(seconds, func, ...)", "Run function after delay")
+addAndTrackReferenceItem(taskSection, "task.desynchronize()", "Desynchronize thread from physics stepping")
+addAndTrackReferenceItem(taskSection, "task.synchronize()", "Synchronize thread with physics stepping")
+addAndTrackReferenceItem(taskSection, "task.cancel(thread)", "Cancel a running task")
+
+-- Miscellaneous
+addAndTrackReferenceItem(miscSection, "require(module)", "Load a module")
+addAndTrackReferenceItem(miscSection, "pcall(function)", "Protected call to handle errors")
+addAndTrackReferenceItem(miscSection, "os.time()", "Get current time as a number")
+addAndTrackReferenceItem(miscSection, "os.date(format)", "Format current date and time")
+addAndTrackReferenceItem(miscSection, "type(value)", "Get type of value")
+addAndTrackReferenceItem(miscSection, "assert(condition, message)", "Throw error if condition is false")
+addAndTrackReferenceItem(miscSection, "error(message, level)", "Raise an error")
+addAndTrackReferenceItem(miscSection, "select('#', ...)", "Count variable arguments")
+addAndTrackReferenceItem(miscSection, "tonumber(str, base)", "Convert string to number")
+addAndTrackReferenceItem(miscSection, "collectgarbage()", "Perform garbage collection")
+addAndTrackReferenceItem(miscSection, "xpcall(f, msgh, ...)", "Protected call with error handler")
+
+
+-- Math Library
+addAndTrackReferenceItem(mathSection, "math.abs(x)", "Absolute value")
+addAndTrackReferenceItem(mathSection, "math.floor(x)", "Round down")
+addAndTrackReferenceItem(mathSection, "math.ceil(x)", "Round up")
+addAndTrackReferenceItem(mathSection, "math.random()", "Generate random number")
+addAndTrackReferenceItem(mathSection, "math.pi", "Value of Pi")
+addAndTrackReferenceItem(mathSection, "math.sqrt(x)", "Square root of x")
+addAndTrackReferenceItem(mathSection, "math.sin(x)", "Sine of x (in radians)")
+addAndTrackReferenceItem(mathSection, "math.cos(x)", "Cosine of x (in radians)")
+addAndTrackReferenceItem(mathSection, "math.tan(x)", "Tangent of x (in radians)")
+addAndTrackReferenceItem(mathSection, "math.huge", "Represents infinity")
+addAndTrackReferenceItem(mathSection, "math.clamp(value, min, max)", "Clamp value between min and max")
+addAndTrackReferenceItem(mathSection, "math.deg(rad)", "Convert radians to degrees")
+addAndTrackReferenceItem(mathSection, "math.rad(deg)", "Convert degrees to radians")
+addAndTrackReferenceItem(mathSection, "math.noise(x, y, z)", "Generate Perlin noise")
+addAndTrackReferenceItem(mathSection, "math.sign(x)", "Get sign of number (-1, 0, or 1)")
+addAndTrackReferenceItem(mathSection, "math.log(x, base)", "Logarithm of x with specified base")
+addAndTrackReferenceItem(mathSection, "math.exp(x)", "e raised to the power x")
+
+-- Operators
+addAndTrackReferenceItem(operatorsSection, "+", "Addition")
+addAndTrackReferenceItem(operatorsSection, "-", "Subtraction")
+addAndTrackReferenceItem(operatorsSection, "*", "Multiplication")
+addAndTrackReferenceItem(operatorsSection, "/", "Division")
+addAndTrackReferenceItem(operatorsSection, "^", "Exponentiation")
+addAndTrackReferenceItem(operatorsSection, "%", "Modulus")
+addAndTrackReferenceItem(operatorsSection, "()", "Parentheses for order of operations")
+
+-- Boolean and Bitwise Operations
+addAndTrackReferenceItem(booleanSection, "and", "Boolean AND")
+addAndTrackReferenceItem(booleanSection, "or", "Boolean OR")
+addAndTrackReferenceItem(booleanSection, "not", "Boolean NOT")
+addAndTrackReferenceItem(booleanSection, "~", "Bitwise NOT")
+addAndTrackReferenceItem(booleanSection, "bit32.band(x, y)", "Bitwise AND")
+addAndTrackReferenceItem(booleanSection, "bit32.bnot(x)", "Bitwise NOT")
+addAndTrackReferenceItem(booleanSection, "bit32.bor(x, y)", "Bitwise OR")
+addAndTrackReferenceItem(booleanSection, "bit32.bxor(x, y)", "Bitwise XOR")
+addAndTrackReferenceItem(booleanSection, "bit32.rshift(x, disp)", "Right shift")
+addAndTrackReferenceItem(booleanSection, "bit32.lshift(x, disp)", "Left shift")
+addAndTrackReferenceItem(booleanSection, "bit32.arshift(x, disp)", "Arithmetic right shift")
+
+-- Metatables and Metamethods
+addAndTrackReferenceItem(metaSection, "setmetatable(t, mt)", "Set a metatable for table t")
+addAndTrackReferenceItem(metaSection, "getmetatable(t)", "Get the metatable of table t")
+addAndTrackReferenceItem(metaSection, "__index", "Metamethod for indexing")
+addAndTrackReferenceItem(metaSection, "__newindex", "Metamethod for new indexing")
+addAndTrackReferenceItem(metaSection, "__add", "Metamethod for addition")
+addAndTrackReferenceItem(metaSection, "__call", "Metamethod for function calls")
+addAndTrackReferenceItem(metaSection, "__sub", "Metamethod for subtraction")
+addAndTrackReferenceItem(metaSection, "__mul", "Metamethod for multiplication")
+addAndTrackReferenceItem(metaSection, "__div", "Metamethod for division")
+addAndTrackReferenceItem(metaSection, "__mod", "Metamethod for modulo")
+addAndTrackReferenceItem(metaSection, "__pow", "Metamethod for exponentiation")
+addAndTrackReferenceItem(metaSection, "__tostring", "Metamethod for string conversion")
+addAndTrackReferenceItem(metaSection, "__concat", "Metamethod for concatenation")
+addAndTrackReferenceItem(metaSection, "__eq", "Metamethod for equality comparison")
+addAndTrackReferenceItem(metaSection, "__lt", "Metamethod for less than comparison")
+addAndTrackReferenceItem(metaSection, "__le", "Metamethod for less than or equal comparison")
+
+-- Roblox Specific
+addAndTrackReferenceItem(robloxSection, "game:GetService()", "Get a Roblox service")
+addAndTrackReferenceItem(robloxSection, "Instance.new()", "Create a new instance")
+addAndTrackReferenceItem(robloxSection, "script.Parent", "Parent of current script")
+addAndTrackReferenceItem(robloxSection, "workspace", "Game workspace")
+addAndTrackReferenceItem(robloxSection, "wait(seconds)", "Wait for specified seconds")
+addAndTrackReferenceItem(robloxSection, "spawn(function)", "Run function in separate thread")
+addAndTrackReferenceItem(robloxSection, "CFrame.new()", "Create a coordinate frame")
+addAndTrackReferenceItem(robloxSection, "Vector3.new()", "Create a 3D vector")
+addAndTrackReferenceItem(robloxSection, "Color3.fromRGB()", "Create color from RGB values")
+addAndTrackReferenceItem(robloxSection, "TweenService", "Service for animations")
+addAndTrackReferenceItem(robloxSection, "Enum", "Enumeration values")
+addAndTrackReferenceItem(robloxSection, "debris:AddItem(instance, time)", "Auto-destroy after time")
+addAndTrackReferenceItem(robloxSection, "UserInputService", "Handle user input")
+addAndTrackReferenceItem(robloxSection, "RunService", "Game lifecycle events")
+addAndTrackReferenceItem(robloxSection, "Players.LocalPlayer", "Reference to local player")
+addAndTrackReferenceItem(robloxSection, "Instance:FindFirstChild()", "Find child by name")
+addAndTrackReferenceItem(robloxSection, "Instance:WaitForChild()", "Wait for child to exist")
+addAndTrackReferenceItem(robloxSection, "Instance:Destroy()", "Destroy an instance")
+addAndTrackReferenceItem(robloxSection, "Instance:Clone()", "Clone an instance")
+addAndTrackReferenceItem(robloxSection, "table.clear(t)", "Clear all elements from table")
+addAndTrackReferenceItem(robloxSection, "table.find(t, value)", "Find value in table")
+addAndTrackReferenceItem(robloxSection, "table.create(count, value)", "Create table with repeated value")
+addAndTrackReferenceItem(robloxSection, "table.freeze(t)", "Make table read-only")
+
+-- Create a search results container that shows up when searching
+local searchResultsContainer = Instance.new("Frame")
+searchResultsContainer.Size = UDim2.new(1, -20, 1, -50)
+searchResultsContainer.Position = UDim2.new(0, 10, 0, 45)
+searchResultsContainer.BackgroundColor3 = Color3.fromRGB(60, 65, 120)
+searchResultsContainer.BorderColor3 = Color3.fromRGB(80, 85, 160)
+searchResultsContainer.BorderSizePixel = 2
+searchResultsContainer.Visible = false
+searchResultsContainer.Parent = background
+
+local searchResultsTitle = Instance.new("TextLabel")
+searchResultsTitle.Size = UDim2.new(1, 0, 0, 24)
+searchResultsTitle.Position = UDim2.new(0, 0, 0, 0)
+searchResultsTitle.BackgroundColor3 = Color3.fromRGB(70, 75, 140)
+searchResultsTitle.BorderSizePixel = 0
+searchResultsTitle.Text = "Search Results"
+searchResultsTitle.Font = Enum.Font.SourceSansBold
+searchResultsTitle.TextSize = 16
+searchResultsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchResultsTitle.Parent = searchResultsContainer
+
+local closeSearchButton = Instance.new("TextButton")
+closeSearchButton.Size = UDim2.new(0, 20, 0, 20)
+closeSearchButton.Position = UDim2.new(1, -25, 0, 2)
+closeSearchButton.BackgroundColor3 = Color3.fromRGB(90, 95, 180)
+closeSearchButton.Text = "X"
+closeSearchButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeSearchButton.Font = Enum.Font.SourceSansBold
+closeSearchButton.TextSize = 14
+closeSearchButton.Parent = searchResultsTitle
+
+local searchResultsScroll = Instance.new("ScrollingFrame")
+searchResultsScroll.Size = UDim2.new(1, 0, 1, -24)
+searchResultsScroll.Position = UDim2.new(0, 0, 0, 24)
+searchResultsScroll.BackgroundTransparency = 1
+searchResultsScroll.BorderSizePixel = 0
+searchResultsScroll.ScrollBarThickness = 4
+searchResultsScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+searchResultsScroll.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will adjust based on content
+searchResultsScroll.Parent = searchResultsContainer
+
+local searchListLayout = Instance.new("UIListLayout")
+searchListLayout.Padding = UDim.new(0, 2)
+searchListLayout.Parent = searchResultsScroll
+
+-- Function to perform search
+local function performSearch(query)
+    -- Clear previous search results
+    for _, child in pairs(searchResultsScroll:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+
+    -- If search query is empty, hide search results
+    if query == "" then
+        searchResultsContainer.Visible = false
+        contentContainer.Visible = true
+        return
+    end
+
+    -- Show search container, hide regular content
+    searchResultsContainer.Visible = true
+    contentContainer.Visible = false
+
+    -- Convert query to lowercase for case-insensitive search
+    query = query:lower()
+
+    -- Count results for updating canvas size
+    local resultCount = 0
+
+    -- Search through all reference items
+    for _, item in pairs(allReferenceItems) do
+        local syntax = item:GetAttribute("Syntax")
+        local description = item:GetAttribute("Description")
+
+        -- Check if query matches either syntax or description
+        if (syntax and syntax:find(query)) or (description and description:find(query)) then
+            -- Clone the item for search results
+            local resultItem = item:Clone()
+            resultItem.Parent = searchResultsScroll
+            resultCount = resultCount + 1
+        end
+    end
+
+    -- Update search results title
+    searchResultsTitle.Text = "Search Results: " .. resultCount .. " found"
+
+    -- Update canvas size based on results
+    searchResultsScroll.CanvasSize = UDim2.new(0, 0, 0, resultCount * 26) -- 24px height + 2px padding
+end
+
+-- Connect search box to search function
+searchBox.Changed:Connect(function(property)
+    if property == "Text" then
+        performSearch(searchBox.Text)
+    end
+end)
+
+-- Close search button functionality
+closeSearchButton.MouseButton1Click:Connect(function()
+    searchBox.Text = ""
+    searchResultsContainer.Visible = false
+    contentContainer.Visible = true
+end)
+
+-- Toggle button functionality
+toggleButton.Click:Connect(function()
+    widget.Enabled = not widget.Enabled
+end)]]></ProtectedString>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+</roblox>
